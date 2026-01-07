@@ -82,9 +82,7 @@
                 const dicomFiles = data.files.filter(f => 
                     !f.is_folder && (
                         f.name.toLowerCase().endsWith('.dcm') ||
-                        f.name.toLowerCase().endsWith('.dicom') ||
-                        f.name.toLowerCase().endsWith('.jpeg') ||
-                        f.name.toLowerCase().endsWith('.jpg')
+                        f.name.toLowerCase().endsWith('.dicom')
                     )
                 );
                 
@@ -94,6 +92,45 @@
                 } else {
                     console.warn('No DICOM files found in folder ' + folderId);
                 }
+                
+                const imgFiles = data.files.filter(f => 
+                    !f.is_folder && (
+                        f.name.toLowerCase().endsWith('.jpg') ||
+                        f.name.toLowerCase().endsWith('.jpeg')
+                    )
+                );
+                
+                if (imgFiles.length > 0) {
+                    console.log('Found ' + imgFiles.length + ' image files');
+                    for (const imgFile of imgFiles) {
+                        console.log('Found image file: ' + imgFile.name);
+                        const downloadUrl = '/nycudmc/api/cloud_drive/download/' + imgFile.uuid;
+
+                        try {
+                            loadPicture(downloadUrl);
+                            console.log('Loaded image file: ' + imgFile.name);
+                        } catch (e) {
+                            console.warn('Direct loadPicture(downloadUrl) failed, fetching blob as fallback:', e);
+                            try {
+                                const resp = await fetch(downloadUrl);
+                                if (resp.ok) {
+                                    const blob = await resp.blob();
+                                    const blobUrl = URL.createObjectURL(blob);
+                                    window.loadPicture = loadPicture;
+                                    loadPicture(blobUrl);
+                                    console.log('Loaded image file via blob: ' + imgFile.name);
+                                } else {
+                                    console.error('Failed to download image file: ' + imgFile.name);
+                                }
+                            } catch (err) {
+                                console.error('Error fetching image file blob:', err);
+                            }
+                        }
+                    }
+                } else {
+                    console.warn('No image files found in folder ' + folderId);
+                }
+                
             } else {
                 console.warn('No files found in folder ' + folderId);
             }
